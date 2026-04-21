@@ -259,90 +259,97 @@ if filtered:
 st.divider()
 
 # ─────────────────────────────────────────────
-# 銘柄リスト（展開式）
+# 銘柄テーブル（v5スタイル・HTMLテーブル）
 # ─────────────────────────────────────────────
+rows_html = ""
 for r in filtered:
-    sym   = r["sym"]
-    price_str = f"{sym}{r['price']:,.0f}" if r["currency"] == "JPY" else f"{sym}{r['price']:,.2f}"
-    h52_str   = f"{sym}{r['high_52w']:,.0f}" if r["currency"] == "JPY" else f"{sym}{r['high_52w']:,.2f}"
-    pull_str  = "AT HIGH" if r["pullback"] == 0 else f"-{r['pullback']}%"
-    pg_cls    = {"低位株":"badge-low","中位株":"badge-mid","高位株":"badge-high"}.get(r["price_group"],"")
-    mkt_cls   = "badge-jp" if r["market"] == "東証" else "badge-us"
+    sym       = r["sym"]
+    price_str = f"{sym}{r['price']:,.0f}" if r["currency"]=="JPY" else f"{sym}{r['price']:,.2f}"
+    h52_str   = f"{sym}{r['high_52w']:,.0f}" if r["currency"]=="JPY" else f"{sym}{r['high_52w']:,.2f}"
+    pull_str  = '<span style="color:#16a34a;font-weight:700">AT HIGH</span>' \
+                if r["pullback"]==0 else \
+                f'<span style="color:#d97706;font-weight:600">-{r["pullback"]}%</span>'
+    rsi_color = "#dc2626" if r["rsi"]>=70 else "#d97706" if r["rsi"]>=55 else "#16a34a"
+    rsi_bg    = "#fee2e2" if r["rsi"]>=70 else "#fef3c7" if r["rsi"]>=55 else "#dcfce7"
+    vol_color = "#ea580c" if r["vol_5d"]>=3 else "#d97706" if r["vol_5d"]>=2 else "#64748b"
+    trend_col = "#16a34a" if "↑" in r["weekly_trend"] else "#dc2626"
+    mkt_style = "background:#dcfce7;color:#15803d;border:1px solid #bbf7d0" \
+                if r["market"]=="東証" else "background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe"
+    score_w   = min(100, r["score"])
+    score_col = "#7c3aed" if score_w>=80 else "#2563eb" if score_w>=65 else "#64748b"
+    per_str   = f"{r['per']:.0f}倍" if r["per"] else "—"
+    eg_str    = f"+{r['earn_growth']:.0f}%" if r["earn_growth"] and r["earn_growth"]>0 \
+                else (f"{r['earn_growth']:.0f}%" if r["earn_growth"] else "—")
+    eg_col    = "#16a34a" if r["earn_growth"] and r["earn_growth"]>0 else "#dc2626"
+    if r["market"] == "東証":
+        code = r["ticker"].replace(".T","")
+        rakuten_url = f"https://www.rakuten-sec.co.jp/web/market/search/ipmenu_stock.html?ID={code}"
+    else:
+        rakuten_url = f"https://www.rakuten-sec.co.jp/web/market/search/ipmenu_us_stock.html?ID={r['ticker']}"
 
-    label = (
-        f"{r['flag']} **{r['name']}** `{r['ticker']}`　"
-        f"{r['pattern']}　スコア **{r['score']}**　{price_str}　{pull_str}　RSI {r['rsi']}"
-    )
+    rows_html += f"""
+    <tr style="border-bottom:1px solid #e2e8f0" onmouseover="this.style.background='#f1f5fd'" onmouseout="this.style.background=''">
+      <td style="padding:11px 12px">
+        <div style="font-weight:700;font-size:13px;color:#0f172a">{r['flag']} {r['name']}</div>
+        <div style="font-family:monospace;font-size:10px;color:#2563eb">{r['ticker']}</div>
+        <div style="font-size:10px;color:#94a3b8">🏭 {r['sector']}</div>
+      </td>
+      <td style="padding:11px 12px"><span style="font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;{mkt_style}">{r['market']}</span></td>
+      <td style="padding:11px 12px"><span style="font-size:11px;padding:3px 9px;border-radius:5px;background:#fef9c3;border:1px solid #fde68a;color:#92400e;font-weight:500;white-space:nowrap">{r['pattern']}</span></td>
+      <td style="padding:11px 12px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-family:monospace;font-weight:700;font-size:14px;color:{score_col};min-width:26px">{r['score']}</span>
+          <div style="flex:1;height:4px;background:#e2e8f0;border-radius:2px;min-width:50px">
+            <div style="width:{score_w}%;height:4px;border-radius:2px;background:linear-gradient(90deg,#2563eb,#7c3aed)"></div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:11px 12px">
+        <div style="font-family:monospace;font-weight:700;font-size:13px">{price_str}</div>
+        <div style="font-size:10px;color:#94a3b8">52W高 {h52_str}</div>
+      </td>
+      <td style="padding:11px 12px">{pull_str}</td>
+      <td style="padding:11px 12px"><span style="font-family:monospace;font-weight:700;font-size:12px;padding:2px 7px;border-radius:4px;background:{rsi_bg};color:{rsi_color}">{r['rsi']}</span></td>
+      <td style="padding:11px 12px">
+        <div style="font-family:monospace;font-size:12px;color:{vol_color};font-weight:600">×{r['vol_5d']}</div>
+        <div style="font-size:10px;color:#94a3b8">今日×{r['vol_ratio']}</div>
+      </td>
+      <td style="padding:11px 12px">
+        <div style="font-size:12px;color:{trend_col};font-weight:600">{r['weekly_trend']}</div>
+        <div style="font-size:10px;color:#94a3b8">13W {sym}{r['wma13']:,.0f}</div>
+      </td>
+      <td style="padding:11px 12px">
+        <div style="font-size:11px">{per_str}</div>
+        <div style="font-size:10px;color:{eg_col}">{eg_str}</div>
+      </td>
+      <td style="padding:11px 12px">
+        <a href="{rakuten_url}" target="_blank" style="background:#bf0000;color:#fff;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:700;text-decoration:none">楽天</a>
+      </td>
+    </tr>"""
 
-    with st.expander(label):
-        # 楽天証券リンク
-        if r["market"] == "東証":
-            code = r["ticker"].replace(".T","")
-            rakuten_url = f"https://www.rakuten-sec.co.jp/web/market/search/ipmenu_stock.html?ID={code}"
-        else:
-            rakuten_url = f"https://www.rakuten-sec.co.jp/web/market/search/ipmenu_us_stock.html?ID={r['ticker']}"
-
-        st.markdown(f"🏭 {r['sector']}　|　"
-                    f"<span class='badge {pg_cls}'>{r['price_group']}</span>　|　"
-                    f"[楽天証券で確認]({rakuten_url})　|　"
-                    f"急騰リスク: {r['risk']}",
-                    unsafe_allow_html=True)
-
-        # 詳細グリッド
-        dc = st.columns(4)
-        dc[0].metric("現在値",       price_str)
-        dc[1].metric("52週高値",     h52_str)
-        dc[2].metric("高値からの乖離", pull_str)
-        dc[3].metric("RSI (14日)",   r["rsi"])
-
-        dc2 = st.columns(4)
-        dc2[0].metric("出来高比率(5D)", f"×{r['vol_5d']}")
-        dc2[1].metric("週足トレンド",  r["weekly_trend"])
-        dc2[2].metric("ATR(%)",       f"{r['atr']}%")
-        dc2[3].metric("直近4週上昇",  f"{r['surge_4w']}%")
-
-        dc3 = st.columns(4)
-        dc3[0].metric("PER",     f"{r['per']}倍"   if r["per"]          else "—")
-        dc3[1].metric("利益成長率", f"+{r['earn_growth']}%" if r["earn_growth"] else "—")
-        dc3[2].metric("配当利回り",  f"{r['div_yield']}%" if r["div_yield"]   else "—")
-        dc3[3].metric("次回決算",    r["next_earnings"] or "未定")
-
-        # スパークライン（週足13週）
-        if r.get("chart"):
-            chart_df = pd.DataFrame({
-                "週": r["chart_dates"],
-                "終値": r["chart"],
-            }).set_index("週")
-            st.line_chart(chart_df, height=160, use_container_width=True)
-
-        # スコア根拠
-        with st.expander("📊 スコア根拠を見る"):
-            score_items = [
-                ("新高値ブレイク",   30, r["pullback"] <= 8 and r["score"] >= 30),
-                ("適切な押し目",     20, 0 <= r["pullback"] <= 8),
-                ("出来高急増",       20, r["vol_5d"] >= 1.5),
-                ("週足上昇トレンド", 15, "↑" in r["weekly_trend"]),
-                ("RSI健全域",        10, 45 <= r["rsi"] <= 80),
-                ("移動平均線上位",    5, r["price"] > r["ma20"] and r["price"] > r["ma50"]),
-            ]
-            for label, pts, ok in score_items:
-                icon  = "✅" if ok else "⬜"
-                color = "#2563eb" if ok else "#94a3b8"
-                st.markdown(
-                    f"{icon} **{label}** "
-                    f"<span style='color:{color};font-family:monospace'>"
-                    f"{'＋' if ok else '('}{ pts}{'pt' if ok else 'pt)'}"
-                    f"</span>",
-                    unsafe_allow_html=True
-                )
-            if r["surge_4w"] >= 20:
-                st.markdown(
-                    f"⚠️ **急騰ペナルティ** "
-                    f"<span style='color:#dc2626;font-family:monospace'>"
-                    f"−{ 20 if r['surge_4w'] >= 30 else 10}pt</span>　"
-                    f"直近4週 +{r['surge_4w']}%上昇",
-                    unsafe_allow_html=True
-                )
+table_html = f"""
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;overflow-x:auto;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-top:8px">
+<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:1100px">
+  <thead>
+    <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+      <th style="padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b;white-space:nowrap">銘柄 / 業種</th>
+      <th style="padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b">市場</th>
+      <th style="padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b">パターン</th>
+      <th style="padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b">スコア</th>
+      <th style="padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b">現在値</th>
+      <th style="padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b">52W高値比</th>
+      <th style="padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b">RSI(14)</th>
+      <th style="padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b">出来高比(5D)</th>
+      <th style="padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b">週足MA</th>
+      <th style="padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b">財務</th>
+      <th style="padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#64748b">楽天</th>
+    </tr>
+  </thead>
+  <tbody>{rows_html}</tbody>
+</table>
+</div>
+"""
+st.markdown(table_html, unsafe_allow_html=True)
 
 st.markdown("""
 <div class="disclaimer">
