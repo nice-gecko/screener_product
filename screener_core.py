@@ -3,6 +3,7 @@ screener_core.py
 スクリーニングロジック（Streamlit app から呼び出す）
 """
 
+import re
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -74,6 +75,7 @@ JP_NAMES = {
     "3923.T":"ラクス","3697.T":"SHIFT",
     "6326.T":"クボタ","5201.T":"AGC",
     "7701.T":"島津製作所","3092.T":"ZOZO",
+    "6858.T":"小野薬品",
 }
 
 SECTOR_JP = {
@@ -128,6 +130,8 @@ def price_group(price, currency):
         else:             return "高位株"
 
 def get_display_name(ticker, raw_name):
+    if not ticker.endswith(".T") and re.match(r'^[0-9][0-9A-Z]{3}$', ticker):
+        ticker = ticker + ".T"
     if ".T" in ticker:
         return JP_NAMES.get(ticker, raw_name)
     if ticker in US_NAMES:
